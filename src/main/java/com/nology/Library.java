@@ -2,7 +2,6 @@ package com.nology;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 
-import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -14,16 +13,28 @@ import java.util.UUID;
 
 public class Library {
 
-    // Make HashMap of books
+    // HashMap of books
+
     private Map<String, Book> booksByTitle = new HashMap<>();
-    // Make Borrowing Record
-    // private List<Record> record = new ArrayList<>();
+
+
+    // Track Borrowing count
+
+    private Map<String, Integer> borrowCountByTitle = new HashMap<>();
+
+
     // Track those kinders
+
     private Map<String, User> usersById = new HashMap<>();
+
+
     // Maps the borrowed csv
+
     private Map<String, List<String>> borrowedBooksByUser = new HashMap<>();
 
-// Loads the csv, reads by line. Helper getSafeVal returns a trimmed or empty string
+
+    // Loads the csv, reads by line. Helper getSafeVal returns a trimmed or empty string
+
     public void loadBooks() {
         try (CSVReader reader = new CSVReader(new FileReader("books.csv"))) {
             String[] line;
@@ -50,7 +61,9 @@ public class Library {
         }
     }
 
+
     // Guards against O.O.B errors, then trims the whitespace off the string
+
     private String getSafeVal(String[] line, int index) {
         if (index < line.length && line[index] != null) {
             return line[index].trim();
@@ -60,29 +73,47 @@ public class Library {
     }
 
 
+    // Creates a SuperUser every session
+
+    public void makeAdmin() {
+        User admin = new User(
+                "admin",
+                "OVERLORD_BOOKSMAXXER_43",
+                "admin123",
+                true
+        );
+
+        usersById.put(admin.getId(), admin);
+    }
 
 
-        // This wasn't meant to still be here Remember to make it useful somehow, or put a bow on it or something?
-        public void printAllBooks() {
+
+
+    // This wasn't meant to still be here Remember to make it useful somehow, or put a bow on it or something?
+
+    public void printAllBooks() {
         for(Book book : booksByTitle.values()) {
             System.out.print(formatBook(book));
             }
         }
 
 // I stole this, but it seems pretty universal
-        String formatBook(Book book) {
-            return "----------------------\n" +
-                    "Title: " + book.getTitle() + "\n" +
-                    "Author: " + book.getAuthor() + "\n" +
-                    "Genre: " + book.getGenre() + "\n" +
-                    "Publisher: " + book.getPublisher() + "\n" +
-                    "----------------------";
+
+    String formatBook(Book book) {
+        return "----------------------\n" +
+                "Title: " + book.getTitle() + "\n" +
+                "Author: " + book.getAuthor() + "\n" +
+                "Genre: " + book.getGenre() + "\n" +
+                "Publisher: " + book.getPublisher() + "\n" +
+                "----------------------";
 
         }
 
 
 
-// If you're e
+// This took me way longer than it should to get right, it makes a user.
+// I looked into factories, but refactoring for a few "new" calls didn't seem worth it
+
     public User addUser(String name, String password) {
         if (name == null) {
             System.out.println("You do remember your name?");;
@@ -98,7 +129,7 @@ public class Library {
         }
 
         String id = UUID.randomUUID().toString();
-        User user = new User(name, id, password);
+        User user = new User(name, id, password, false);
         usersById.put(id, user);
         saveUser(user);
         System.out.println("User Account Created (your soul is now ours)");
@@ -107,6 +138,8 @@ public class Library {
 
 
     }
+
+    // Writes the Users csv
 
     public void saveUser(User user) {
         try (CSVWriter writer = new CSVWriter(new FileWriter("users.csv", true))) {
@@ -124,6 +157,8 @@ public class Library {
         }
     }
 
+    // Reads the Users csv
+
     public void loadUsers() {
         try (CSVReader reader = new CSVReader(new FileReader("users.csv"))) {
 
@@ -136,7 +171,7 @@ public class Library {
                 String name = line[1];
                 String password = line[2];
 
-                User user = new User(name, id, password);
+                User user = new User(name, id, password, false);
                 usersById.put(id, user);
             }
 
@@ -145,6 +180,7 @@ public class Library {
         }
     }
 
+// handles login by checking for existing users
 
     public User login(String name, String password) {
 
@@ -159,10 +195,7 @@ public class Library {
         return null;
     }
 
-
-
-
-        //Book borrowing logic
+    //Book borrowing logic (with new and improved error handling on the hashmaps and 99% fat free)
 
 public boolean borrowBook(String id, String title) {
     User user = usersById.get(id);
@@ -175,41 +208,81 @@ public boolean borrowBook(String id, String title) {
 
     book.setAvailable(false);
 
-    saveBorrowRecord(id, book.getTitle());
     borrowedBooksByUser
             .computeIfAbsent(id, k -> new ArrayList<>())
             .add(book.getTitle());
+
+    borrowCountByTitle.put(
+            book.getTitle(),
+            borrowCountByTitle.getOrDefault(book.getTitle(), 0) + 1
+    );
+
+    saveBorrowRecord(id, book.getTitle(), "BORROW");
+
     return true;
 }
 
-    public void saveBorrowRecord(String userId, String bookTitle) {
+    // Writes to borrowing record csv
+
+    public void saveBorrowRecord(String userId, String bookTitle, String action) {
         try (CSVWriter writer = new CSVWriter(new FileWriter("borrowed.csv", true))) {
 
-            String[] record = { userId, bookTitle };
+            String[] record = { userId, bookTitle, action };
             writer.writeNext(record);
 
         } catch (IOException e) {
             System.out.println("Error saving borrow record");
         }
     }
-// Loads the Borrowed record into a Hashmap
+
+
+    // Loads the Borrowed record into a Hashmap
+
     public void loadBorrowed() {
 
         try (CSVReader reader = new CSVReader(new FileReader("borrowed.csv"))) {
 
             String[] line;
-            reader.readNext(); // skip header
+            // reader.readNext(); // skip header if using header, (which you're not)
 
             while ((line = reader.readNext()) != null) {
 
+                // csv structural check
+                if (line.length < 3) continue;
+
                 String userId = line[0];
                 String bookTitle = line[1];
+                String action = line[2];
 
-                if (!borrowedBooksByUser.containsKey(userId)) {
-                    borrowedBooksByUser.put(userId, new ArrayList<>());
+                if (action.equals("BORROW")) {
+
+                    borrowedBooksByUser
+                            .computeIfAbsent(userId, k -> new ArrayList<>())
+                            .add(bookTitle);
+
+                    borrowCountByTitle.put(
+                            bookTitle,
+                            borrowCountByTitle.getOrDefault(bookTitle, 0) + 1
+                    );
+
+                    Book book = booksByTitle.get(bookTitle.toLowerCase());
+                    if (book != null) {
+                        book.setAvailable(false);
+                    }
+
+                } else if (action.equals("RETURN")) {
+
+                    List<String> books = borrowedBooksByUser.get(userId);
+
+                    if (books != null) {
+                        books.remove(bookTitle);
+                    }
+
+                    Book book = booksByTitle.get(bookTitle.toLowerCase());
+                    if (book != null) {
+                        book.setAvailable(true);
+                    }
                 }
-
-                borrowedBooksByUser.get(userId).add(bookTitle);
             }
 
         } catch (Exception e) {
@@ -217,8 +290,72 @@ public boolean borrowBook(String id, String title) {
         }
     }
 
+   // Return Book Logic
+
+    public boolean returnBook(String userId, String title) {
+
+        List<String> userBooks = borrowedBooksByUser.get(userId);
+
+        if (userBooks == null || !userBooks.contains(title)) {
+            return false;
+        }
+
+        userBooks.remove(title);
+
+        Book book = booksByTitle.get(title.toLowerCase());
+
+        if (book != null) {
+            book.setAvailable(true);
+        }
+
+        saveBorrowRecord(userId, title, "RETURN");
+
+        return true;
+    }
+
+
+    // Displays Users Books (probs needs updating)
+
+    public void showUserBooks(String userId) {
+
+        List<String> books = borrowedBooksByUser.get(userId);
+
+        if (books == null || books.isEmpty()) {
+            System.out.println("You have no borrowed books.");
+            return;
+        }
+
+        System.out.println("\n><>< My Books ><><");
+
+        for (String title : books) {
+            Book book = booksByTitle.get(title.toLowerCase());
+
+            if (book != null) {
+                System.out.println(formatBook(book));
+            } else {
+                // fallback if something went weird
+                System.out.println(title);
+            }
+        }
+    }
+
+
+
+    // Getter for borrowing (With error handling)
+
+    public int getBorrowCount(String title) {
+        return borrowCountByTitle.getOrDefault(title, 0);
+    }
+
+    // getter for returning
+
+    public List<String> getBorrowedBooks(String userId) {
+        return borrowedBooksByUser.getOrDefault(userId, new ArrayList<>());
+    }
 
     // "Basic" hashmap search function (This has taken me from 16.41 to 18.44)
+    // So I called it "The book toucher" to amuse myself
+    // (Don't worry, it's already on a list)
 
     public List<Book> searchByTitle(String title) {
 
@@ -234,11 +371,42 @@ public boolean borrowBook(String id, String title) {
     }
 
 
+    // The horrors persist... Now so do the flags
+
+    public void loadBookState() {
+
+        for (Book book : booksByTitle.values()) {
+            book.setAvailable(true);
+        }
+
+        for (List<String> titles : borrowedBooksByUser.values()) {
+            for (String title : titles) {
+                Book book = booksByTitle.get(title.toLowerCase());
+                if (book != null) {
+                    book.setAvailable(false);
+                }
+            }
+        }
+    }
+
+// helpers for testing
+
+    public void addTestBook(Book book) {
+        booksByTitle.put(book.getTitle().toLowerCase(), book);
+    }
+
+
 
 
 
 
 
 }
+
+
+
+
+
+
 
 
