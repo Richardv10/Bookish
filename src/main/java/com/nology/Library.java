@@ -12,7 +12,18 @@ import java.util.Map;
 import java.util.UUID;
 
 public class Library {
+    private String userFile;
+    private String borrowedFile;
 
+
+    public Library(String userFile, String borrowedFile) {
+        this.userFile = userFile;
+        this.borrowedFile = borrowedFile;
+    }
+
+    public Library() {
+        this("users.csv", "borrowed.csv");
+    }
     // HashMap of books
 
     private Map<String, Book> booksByTitle = new HashMap<>();
@@ -28,7 +39,7 @@ public class Library {
     private Map<String, User> usersById = new HashMap<>();
 
 
-    // Maps the borrowed csv
+    // Map the borrowed csv
 
     private Map<String, List<String>> borrowedBooksByUser = new HashMap<>();
 
@@ -142,7 +153,7 @@ public class Library {
     // Writes the Users csv
 
     public void saveUser(User user) {
-        try (CSVWriter writer = new CSVWriter(new FileWriter("users.csv", true))) {
+        try (CSVWriter writer = new CSVWriter(new FileWriter(userFile, true))) {
 
             String[] record = {
                     user.getId(),
@@ -160,7 +171,7 @@ public class Library {
     // Reads the Users csv
 
     public void loadUsers() {
-        try (CSVReader reader = new CSVReader(new FileReader("users.csv"))) {
+        try (CSVReader reader = new CSVReader(new FileReader(userFile))) {
 
             String[] line;
             reader.readNext(); // skip header
@@ -225,7 +236,7 @@ public boolean borrowBook(String id, String title) {
     // Writes to borrowing record csv
 
     public void saveBorrowRecord(String userId, String bookTitle, String action) {
-        try (CSVWriter writer = new CSVWriter(new FileWriter("borrowed.csv", true))) {
+        try (CSVWriter writer = new CSVWriter(new FileWriter(borrowedFile, true))) {
 
             String[] record = { userId, bookTitle, action };
             writer.writeNext(record);
@@ -240,7 +251,7 @@ public boolean borrowBook(String id, String title) {
 
     public void loadBorrowed() {
 
-        try (CSVReader reader = new CSVReader(new FileReader("borrowed.csv"))) {
+        try (CSVReader reader = new CSVReader(new FileReader(borrowedFile))) {
 
             String[] line;
             // reader.readNext(); // skip header if using header, (which you're not)
@@ -338,7 +349,6 @@ public boolean borrowBook(String id, String title) {
             }
         }
     }
-
 
 
     // Getter for borrowing (With error handling)

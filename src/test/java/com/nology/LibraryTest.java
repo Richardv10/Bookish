@@ -3,6 +3,9 @@ package com.nology;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class LibraryTest {
@@ -10,14 +13,41 @@ public class LibraryTest {
     private Library library;
 
     @BeforeEach
-    void setUp() {
-        library = new Library();
+    void setup() {
+        new File("userTest.csv").delete();
+        new File("borrowTest.csv").delete();
 
-        library.loadBooks();
+        library = new Library("userTest.csv", "borrowTest");
+
     }
+
+    // User Story: As a logged in user, I borrow a book. Come back later and it's still there
+    // Create + Update
+    // Acceptance criteria: Checking if the test book remains attached to the user after reload
+    @Test
+    void BorrowBook() {
+        User user = library.addUser("Tester", "123456789");
+
+        Book book = new Book("Learn Java in a day", "Jamie Chan", "Fiction", "Own garage");
+
+        library.addTestBook(book);
+
+        // Actually borrow the book (Update)
+        library.borrowBook(user.getId(), "Learn Java in a day");
+
+        // Reload Library to simulate new session
+
+        Library reloaded = new Library("userTest.csv", "borrowTest");
+        reloaded.addTestBook(book);
+        reloaded.loadBorrowed();
+
+        List<String> books = reloaded.getBorrowedBooks(user.getId());
+
+        assertTrue(books.contains("Learn Java in a day"));
+    }
+
+
+
+
 }
 
-// I didn't have time today to look into how to test my app.
-// I don't think it's a good sign that it's a fragile state
-// The multiple csv files work to save state and data, but I'm going to need
-// some helper functions to avoid breaking them
