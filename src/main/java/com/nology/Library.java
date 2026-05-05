@@ -323,7 +323,23 @@ public boolean borrowBook(String id, String title) {
         userService.loadUsers();
     }
 
+// Admin Methods
 
+    public String printMostBorrowedBook() {
+        System.out.print("-- Most Borrowed Book --");
+        String topTitle = null;
+        int max = 0;
+
+        for (Map.Entry<String, Integer> entry : borrowCountByTitle.entrySet()) {
+
+            if (entry.getValue() > max) {
+                max = entry.getValue();
+                topTitle = entry.getKey();
+            }
+        }
+
+        return topTitle;
+    }
 
 }
 

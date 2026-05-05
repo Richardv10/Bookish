@@ -286,7 +286,7 @@ private void adminMenu() {
                 break;
 
             case "2":
-               // library.printMostBorrowedBooks();
+               library.printMostBorrowedBook();
                 break;
 
 
