@@ -9,7 +9,6 @@ public class Menu {
     private Scanner scanner;
     private User currentUser;
 
-
     public Menu(Library library, Scanner scanner) {
         this.library = library;
         this.scanner = scanner;

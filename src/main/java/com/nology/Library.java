@@ -12,17 +12,16 @@ import java.util.Map;
 import java.util.UUID;
 
 public class Library {
-    private String userFile;
     private String borrowedFile;
+    private UserService userService;
 
-
-    public Library(String userFile, String borrowedFile) {
-        this.userFile = userFile;
+    public Library(String borrowedFile, UserService userService) {
         this.borrowedFile = borrowedFile;
+        this.userService = userService;
     }
 
-    public Library() {
-        this("users.csv", "borrowed.csv");
+    public Library(UserService userService) {
+        this("borrowed.csv", userService);
     }
     // HashMap of books
 
@@ -32,11 +31,6 @@ public class Library {
     // Track Borrowing count
 
     private Map<String, Integer> borrowCountByTitle = new HashMap<>();
-
-
-    // Track those kinders
-
-    private Map<String, User> usersById = new HashMap<>();
 
 
     // Map the borrowed csv
@@ -84,22 +78,6 @@ public class Library {
     }
 
 
-    // Creates a SuperUser every session
-
-    public void makeAdmin() {
-        User admin = new User(
-                "admin",
-                "OVERLORD_BOOKSMAXXER_43",
-                "admin123",
-                true
-        );
-
-        usersById.put(admin.getId(), admin);
-    }
-
-
-
-
     // This wasn't meant to still be here Remember to make it useful somehow, or put a bow on it or something?
 
     public void printAllBooks() {
@@ -108,7 +86,8 @@ public class Library {
             }
         }
 
-// I stole this, but it seems pretty universal
+
+        // I stole this, but it seems pretty universal
 
     String formatBook(Book book) {
         return "----------------------\n" +
@@ -120,96 +99,10 @@ public class Library {
 
         }
 
-
-
-// This took me way longer than it should to get right, it makes a user.
-// I looked into factories, but refactoring for a few "new" calls didn't seem worth it
-
-    public User addUser(String name, String password) {
-        if (name == null) {
-            System.out.println("You do remember your name?");;
-            return null;
-        }
-        if (password == null) {
-            System.out.println("Even Monkeys can learn 8 letters");;
-            return null;
-        }
-        if (password.length() < 8) {
-            System.out.println("Please try, just this once");
-            return null;
-        }
-
-        String id = UUID.randomUUID().toString();
-        User user = new User(name, id, password, false);
-        usersById.put(id, user);
-        saveUser(user);
-        System.out.println("User Account Created (your soul is now ours)");
-        return user;
-
-
-
-    }
-
-    // Writes the Users csv
-
-    public void saveUser(User user) {
-        try (CSVWriter writer = new CSVWriter(new FileWriter(userFile, true))) {
-
-            String[] record = {
-                    user.getId(),
-                    user.getName(),
-                    user.getPassword()
-            };
-
-            writer.writeNext(record);
-
-        } catch (IOException e) {
-            System.out.println("Error saving user");
-        }
-    }
-
-    // Reads the Users csv
-
-    public void loadUsers() {
-        try (CSVReader reader = new CSVReader(new FileReader(userFile))) {
-
-            String[] line;
-            reader.readNext(); // skip header
-
-            while ((line = reader.readNext()) != null) {
-
-                String id = line[0];
-                String name = line[1];
-                String password = line[2];
-
-                User user = new User(name, id, password, false);
-                usersById.put(id, user);
-            }
-
-        } catch (Exception e) {
-            System.out.println("Error loading users");
-        }
-    }
-
-// handles login by checking for existing users
-
-    public User login(String name, String password) {
-
-        for (User user : usersById.values()) {
-
-            if (user.getName().equals(name)
-                    && user.getPassword().equals(password)) {
-                return user;
-            }
-        }
-
-        return null;
-    }
-
     //Book borrowing logic (with new and improved error handling on the hashmaps and 99% fat free)
 
 public boolean borrowBook(String id, String title) {
-    User user = usersById.get(id);
+    User user = userService.getUserById(id);
     if (user == null) return false;
 
     Book book = booksByTitle.get(title.toLowerCase());
@@ -233,7 +126,9 @@ public boolean borrowBook(String id, String title) {
     return true;
 }
 
-    // Writes to borrowing record csv
+
+
+// Writes to borrowing record csv
 
     public void saveBorrowRecord(String userId, String bookTitle, String action) {
         try (CSVWriter writer = new CSVWriter(new FileWriter(borrowedFile, true))) {
@@ -247,7 +142,8 @@ public boolean borrowBook(String id, String title) {
     }
 
 
-    // Loads the Borrowed record into a Hashmap
+
+// Loads the Borrowed record into a Hashmap
 
     public void loadBorrowed() {
 
@@ -301,7 +197,9 @@ public boolean borrowBook(String id, String title) {
         }
     }
 
-   // Return Book Logic
+
+
+// Return Book Logic
 
     public boolean returnBook(String userId, String title) {
 
@@ -351,7 +249,7 @@ public boolean borrowBook(String id, String title) {
     }
 
 
-    // Getter for borrowing (With error handling)
+// Getter for borrowing (With error handling)
 
     public int getBorrowCount(String title) {
         return borrowCountByTitle.getOrDefault(title, 0);
@@ -363,7 +261,7 @@ public boolean borrowBook(String id, String title) {
         return borrowedBooksByUser.getOrDefault(userId, new ArrayList<>());
     }
 
-    // "Basic" hashmap search function (This has taken me from 16.41 to 18.44)
+    // "Basic" hashmap search function (This has taken me from 16.41 to 18.44 because I had  learn how streams work to use filter)
     // So I called it "The book toucher" to amuse myself
     // (Don't worry, it's already on a list)
 
@@ -375,13 +273,14 @@ public boolean borrowBook(String id, String title) {
 
         String lowerTitle = title.trim().toLowerCase();
 
+        // This is cool, I feel I'll use this A LOT, streaming data from hashmap->pass it into a filter that runs the search, then into a list
         return booksByTitle.values().stream()
                 .filter(book -> book.getTitle().toLowerCase().contains(lowerTitle))
                 .toList();
     }
 
 
-    // The horrors persist... Now so do the flags
+// The horrors persist... Now so do the flags
 
     public void loadBookState() {
 
@@ -406,8 +305,23 @@ public boolean borrowBook(String id, String title) {
     }
 
 
+// Passthrough methods for UserService
 
+    public User addUser(String name, String password) {
+        return userService.addUser(name, password);
+    }
 
+    public User login(String name, String password) {
+        return userService.login(name, password);
+    }
+
+    public User getUserById(String id) {
+        return userService.getUserById(id);
+    }
+
+    public void loadUsers() {
+        userService.loadUsers();
+    }
 
 
 

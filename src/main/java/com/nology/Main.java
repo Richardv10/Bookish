@@ -5,12 +5,13 @@ import java.util.Scanner;
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
     public static void main(String[] args) {
-        Library library = new Library();
+        UserService userService = new UserService();
+        Library library = new Library(userService);
         library.loadBooks();
-        library.loadUsers();
+        userService.loadUsers();
         library.loadBorrowed();
         library.loadBookState();
-        library.makeAdmin();
+        userService.makeAdmin();
         Scanner scanner = new Scanner(System.in);
 
         Menu menu = new Menu(library, scanner);

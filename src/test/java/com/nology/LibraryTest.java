@@ -11,13 +11,16 @@ import static org.junit.jupiter.api.Assertions.*;
 public class LibraryTest {
 
     private Library library;
+    private UserService userService;
 
     @BeforeEach
     void setup() {
         new File("userTest.csv").delete();
         new File("borrowTest.csv").delete();
 
-        library = new Library("userTest.csv", "borrowTest");
+        userService = new UserService("userTest.csv");
+        library = new Library("userTest.csv", userService);
+
 
     }
 
@@ -26,7 +29,7 @@ public class LibraryTest {
     // Acceptance criteria: Checking if the test book remains attached to the user after reload
     @Test
     void BorrowBook() {
-        User user = library.addUser("Tester", "123456789");
+        User user = userService.addUser("Tester", "123456789");
 
         Book book = new Book("Learn Java in a day", "Jamie Chan", "Fiction", "Own garage");
 
@@ -37,7 +40,9 @@ public class LibraryTest {
 
         // Reload Library to simulate new session
 
-        Library reloaded = new Library("userTest.csv", "borrowTest");
+        Library reloaded = new Library("userTest.csv", userService);
+
+
         reloaded.addTestBook(book);
         reloaded.loadBorrowed();
 
